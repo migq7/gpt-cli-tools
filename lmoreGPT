@@ -1,0 +1,32 @@
+#!/home/yutongwu/miniconda3/envs/openai/bin/python
+
+from appGPT import gpt_open_new
+from appGPT import get_prompt_from_editor
+from appGPT import get_editor_path
+import os
+import select
+import sys
+from sys import exit
+
+try:
+    editor_bin = get_editor_path()
+except Exception as e:
+    print(f'{type(e).__name__}: {str(e)}')
+    exit(1)
+
+pipe_in = ''
+if select.select([sys.stdin], [], [], 0.1)[0]:
+    pipe_in = sys.stdin.read().strip() + '\n'
+
+input_str = get_prompt_from_editor(editor_bin, pipe_in).strip()
+
+if input_str.strip() == '':
+    print('[error] no input')
+    exit(1)
+
+try:
+    with gpt_open_top() as gpt:
+        gpt.talk(input_str)
+except Exception as e:
+    print(f'{type(e).__name__}: {str(e)}')
+    exit(1)

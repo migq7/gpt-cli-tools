@@ -1,0 +1,152 @@
+#!/home/yutongwu/miniconda3/envs/openai/bin/python
+
+from appGPT import RecordGPT
+from appGPT import BasicGPT
+import inquirer
+import argparse
+import os
+import select
+import sys
+
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.text import Text
+from rich.color import Color
+from rich.pager import Pager
+from rich.padding import Padding
+from rich.align import Align
+from wcwidth import wcwidth
+
+class IndexedList:
+    def __init__(self, index, content):
+        self._idx = index
+        self._content = content
+
+    def __str__(self):
+        return self._content
+
+    def idx(self):
+        return self._idx
+
+class HistGPT(BasicGPT):
+    def __init__(self, cfg_path=''):
+        super().__init__(cfg_path)
+
+        # app params
+        self._app_name = 'historyGPT'
+        self._ui_color = 'yellow'
+        self._max_width = 120
+
+        self._width = min(self._max_width, Console().size.width)
+
+        # init console objects
+        self._console = Console(width=self._width)
+
+    def _put_prompt(self, prompt):
+        title = self._app_name
+        self._console.print(
+            Panel(prompt, title=title, title_align="left", border_style=self._ui_color)
+        )
+
+    def _put_content(self, content):
+        self._console.print(content)
+
+    def show(self, dialog):
+        for line in dialog:
+            if line.get('role') == 'user':
+                self._put_prompt(line.get('content'))
+            elif line.get('role') == 'assistant':
+                self._put_content(line.get('content'))
+
+
+def clear_hist():
+    r = RecordGPT()
+    r.remove_all()
+    print('[info] history cleared')
+
+
+def init_askgpt():
+    cfg_path = os.path.join(os.path.expanduser('~'), '.config', 'askgpt', 'config.yaml')
+    # if file already exists
+    if os.path.exists(cfg_path):
+        print(f'[error] config.yaml already exists: {cfg_path}')
+        return
+
+    # if dir not exists
+    dir_path = os.path.join(os.path.expanduser('~'), '.config', 'askgpt')
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    # create config.yaml
+    with open(cfg_path, 'w') as f:
+        f.write(
+'''model:
+    api_key: ''
+    model: 'gpt-4o-mini'
+    temperature: 0.8
+    system_prompt:
+        - make it brief if possible
+
+net:
+    proxy: 'http://192.168.4.219:10811'
+
+record:
+    max: 10
+
+interface:
+    editor: 'nano'
+
+'''
+        )
+    print('[info] config.yaml created successfully')
+
+    return
+
+
+def sel_hist():
+    r = RecordGPT()
+
+    list = []
+    for idx, summary in enumerate(r.list_iter()):
+        if len(summary) > 0:
+            list.append(IndexedList(idx, summary))
+
+    if len(list) == 0:
+        print('[error] no history found')
+        return None
+
+    questions = [inquirer.List( 'choice', message="pick a record", choices=list)]
+    answers = inquirer.prompt(questions)
+    if not answers:
+        return
+
+    r.pick(answers['choice'].idx())
+    a = r.top()
+    return a
+
+def view_hist(dialog):
+    hist = HistGPT()
+    hist.show(dialog)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='view history dialogs and setup askGPT')
+    parser.add_argument('--clear', action='store_true', help='clear all saved history')
+    parser.add_argument('--init', action='store_true', help='initiate askGPT configuration')
+
+    args = parser.parse_args()
+    clear_flag = args.clear
+    init_flag = args.init
+
+    if clear_flag:
+        clear_hist()
+
+    if init_flag:
+        init_askgpt()
+
+    if not (clear_flag or init_flag):
+        hist = sel_hist()
+        if hist is not None:
+            view_hist(hist)
+
