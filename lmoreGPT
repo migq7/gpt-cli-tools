@@ -1,6 +1,6 @@
 #!/home/yutongwu/miniconda3/envs/openai/bin/python
 
-from appGPT import gpt_open_new
+from appGPT import gpt_open_top
 from appGPT import get_prompt_from_editor
 from appGPT import get_editor_path
 import os

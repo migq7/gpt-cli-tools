@@ -455,7 +455,7 @@ def get_editor_path(cfg_path=''):
     editor_bin = 'nano'
     if interface_cfg is not None:
         editor_bin = interface_cfg.get('editor', 'nano')
-    
+
     return editor_bin
 
 

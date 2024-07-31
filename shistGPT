@@ -49,15 +49,17 @@ class HistGPT(BasicGPT):
             Panel(prompt, title=title, title_align="left", border_style=self._ui_color)
         )
 
-    def _put_content(self, content):
+    def _put_content(self, content, format_md=False):
+        if format_md:
+            content = Markdown(content)
         self._console.print(content)
 
-    def show(self, dialog):
+    def show(self, dialog, format_md=False):
         for line in dialog:
             if line.get('role') == 'user':
                 self._put_prompt(line.get('content'))
             elif line.get('role') == 'assistant':
-                self._put_content(line.get('content'))
+                self._put_content(line.get('content'), format_md)
 
 
 def clear_hist():
@@ -125,19 +127,21 @@ def sel_hist():
     a = r.top()
     return a
 
-def view_hist(dialog):
+def view_hist(dialog, format_md=False):
     hist = HistGPT()
-    hist.show(dialog)
+    hist.show(dialog, format_md)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='view history dialogs and setup askGPT')
     parser.add_argument('--clear', action='store_true', help='clear all saved history')
     parser.add_argument('--init', action='store_true', help='initiate askGPT configuration')
+    parser.add_argument('--markdown', action='store_true', help='format content as markdown')
 
     args = parser.parse_args()
     clear_flag = args.clear
     init_flag = args.init
+    markdown_flag = args.markdown
 
     if clear_flag:
         clear_hist()
@@ -148,5 +152,5 @@ if __name__ == "__main__":
     if not (clear_flag or init_flag):
         hist = sel_hist()
         if hist is not None:
-            view_hist(hist)
+            view_hist(hist, markdown_flag)
 
